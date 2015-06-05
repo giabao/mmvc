@@ -22,7 +22,9 @@ SOFTWARE.
 
 package mmvc.base;
 
-import haxe.Timer;
+import openfl.events.EventDispatcher;
+import openfl.Lib;
+import openfl.events.Event;
 import haxe.ds.ObjectMap;
 
 import minject.Injector;
@@ -37,6 +39,9 @@ import mmvc.api.IViewContainer;
 **/
 class MediatorMap extends ViewMapBase implements IMediatorMap
 {
+	static var enterFrameDispatcher(get, never): EventDispatcher;
+    static inline function get_enterFrameDispatcher() return Lib.current;
+    
 	var mediatorByView:ObjectMap<{}, IMediator>;
 	var mappingConfigByView:ObjectMap<{}, MappingConfig>;
 	var mappingConfigByViewClassName:Map<String, MappingConfig>;
@@ -238,12 +243,17 @@ class MediatorMap extends ViewMapBase implements IMediatorMap
 
 		if (config != null && config.autoRemove)
 		{
-			removeMediatorByView(view);
+			mediatorsMarkedForRemoval.set(view, view);
+			if (!hasMediatorsMarkedForRemoval) {
+				hasMediatorsMarkedForRemoval = true;
+				enterFrameDispatcher.addEventListener(Event.ENTER_FRAME, removeMediatorLater);
+			}
 		}
 	}
 
-	function removeMediatorLater():Void
+	function removeMediatorLater(e: Event):Void
 	{
+		enterFrameDispatcher.removeEventListener(Event.ENTER_FRAME, removeMediatorLater);
 		for (view in mediatorsMarkedForRemoval)
 		{
 			if (!contextView.isAdded(view))
